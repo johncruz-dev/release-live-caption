@@ -1,0 +1,45 @@
+{
+  "name": "caption-app",
+  "version": "1.0.0",
+  "description": "JS-Live Caption App",
+  "author": "JS-Live Caption",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "npm run clean && electron-builder --win --x64",
+    "build:dir": "npm run clean && electron-builder --win --x64 --dir",
+    "clean": "if exist dist rmdir /s /q dist"
+  },
+  "build": {
+    "appId": "com.captionapp.interview",
+    "productName": "JS-LiveCaptionApp",
+    "asar": true,
+    "win": {
+      "icon": "assets/logo.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "deleteAppDataOnUninstall": true,
+      "artifactName": "JS-Live Caption.exe"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.0.0"
+  }
+}

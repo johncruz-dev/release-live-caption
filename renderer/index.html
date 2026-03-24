@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>CaptionApp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+  <div class="topbar drag">
+    <div class="topbar-left">
+      <div class="app-icon">C</div>
+      <span class="rec-title no-drag" id="recTitle" contenteditable="true" spellcheck="false" title="Click to rename"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur()}">Untitled Recording</span>
+    </div>
+    <div class="topbar-center">
+      <div class="rec-badge" id="recBadge">
+        <div class="rec-dot pulse"></div>
+        <span id="recTimer">00:00</span>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" onclick="window.api.minimize()" title="Minimize"><i
+          class="fas fa-window-minimize"></i></button>
+      <button class="icon-btn" onclick="window.api.maximize()" title="Maximize"><i
+          class="fas fa-window-maximize"></i></button>
+      <button class="icon-btn close" onclick="window.api.close()" title="Close"><i class="fas fa-times"></i></button>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn start" id="btnStart" onclick="startSession()" title="Start Recording"><i
+        class="fas fa-play"></i>Start</button>
+    <button class="btn stop" id="btnStop" onclick="stopSession()" disabled title="Stop"><i
+        class="fas fa-stop"></i>Stop</button>
+    <div class="spacer"></div>
+    <button class="btn" id="btnCopyAll" onclick="copyAll()" disabled title="Copy All"><i class="fas fa-copy"></i>Copy
+      All</button>
+    <button class="btn export" id="btnExp" onclick="exportNow()" disabled title="Export"><i
+        class="fas fa-download"></i>Export</button>
+  </div>
+
+  <div class="content">
+    <div class="transcript" id="transcript" style="display:none"></div>
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">🎙</div>
+      <div class="empty-title">Ready to caption</div>
+      <div class="empty-sub">Press Start Recording, then play<br>your interview audio or video</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="renderer.js"></script>
+</body>
+
+</html>
