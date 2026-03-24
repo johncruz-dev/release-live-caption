@@ -277,6 +277,128 @@ if ($win) {
   return r || 'NOT_FOUND'
 })
 
+// Show caption window (restore from hidden position)
+ipcMain.handle('show-caption-window', async () => {
+  const showScript = `
+$found = $false
+foreach ($t in @("Live captions","Live Captions","Captions","LiveCaptions")) {
+  $h = [W32]::FindWindow($null,$t)
+  if ($h -ne [IntPtr]::Zero) {
+    [W32]::SetWindowPos($h,[IntPtr]::Zero,100,100,800,200,0x0040)
+    Write-Output "shown:$t"
+    $found = $true
+    break
+  }
+}
+if (-not $found) {
+  $p = Get-Process -Name "LiveCaptions" -ErrorAction SilentlyContinue
+  if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero) {
+    [W32]::SetWindowPos($p.MainWindowHandle,[IntPtr]::Zero,100,100,800,200,0x0040)
+    Write-Output "shown:proc"
+    $found = $true
+  }
+}
+if (-not $found) { Write-Output "not_found" }
+`
+  if (psProc && psReady) {
+    const r = await sendPS(showScript, 3000)
+    return r === 'TIMEOUT' ? 'not_found' : (r || 'not_found')
+  }
+  return runPS(`Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+public class WindowHelper {
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h,IntPtr i,int x,int y,int w,int ht,uint f);
+  [DllImport("user32.dll")] public static extern IntPtr FindWindow(string c,string t);
+}
+"@
+$found = $false
+foreach ($t in @("Live captions","Live Captions","Captions","LiveCaptions")) {
+  $h = [WindowHelper]::FindWindow($null,$t)
+  if ($h -ne [IntPtr]::Zero) {
+    [WindowHelper]::SetWindowPos($h,[IntPtr]::Zero,100,100,800,200,0x0040)
+    Write-Output "shown:$t"
+    $found = $true
+    break
+  }
+}
+if (-not $found) {
+  $p = Get-Process -Name "LiveCaptions" -ErrorAction SilentlyContinue
+  if ($p -and $p.MainWindowHandle -ne [IntPtr]::Zero) {
+    [WindowHelper]::SetWindowPos($p.MainWindowHandle,[IntPtr]::Zero,100,100,800,200,0x0040)
+    Write-Output "shown:proc"
+    $found = $true
+  }
+}
+if (-not $found) { Write-Output "not_found" }
+`)
+})
+
+// Scan all text elements in the caption window (alternative read method)
+ipcMain.handle('read-caption-scan', async () => {
+  if (!psProc || !psReady) return 'NOT_FOUND'
+
+  const r = await sendPS(`
+$win = $null
+foreach ($t in @("Live captions","Live Captions","Captions","LiveCaptions")) {
+  $c = New-Object System.Windows.Automation.PropertyCondition($global:prop,$t)
+  $w = $global:root.FindFirst($global:scope,$c)
+  if ($w) { $win = $w; break }
+}
+if (-not $win) {
+  $walker = [System.Windows.Automation.TreeWalker]::RawViewWalker
+  $child  = $walker.GetFirstChild($global:root)
+  while ($child) {
+    try { if ($child.Current.Name -match "(?i)caption") { $win = $child; break } } catch {}
+    $child = $walker.GetNextSibling($child)
+  }
+}
+if ($win) {
+  $tc  = New-Object System.Windows.Automation.PropertyCondition($global:ctrl,$global:ttype)
+  $els = $win.FindAll($global:sub,$tc)
+  $out = @()
+  foreach ($e in $els) { try { $n = $e.Current.Name.Trim(); if ($n) { $out += $n } } catch {} }
+  if ($out.Count) { Write-Output ($out -join " ") } else { Write-Output "WINDOW_FOUND_NO_TEXT" }
+} else {
+  Write-Output "NOT_FOUND"
+}
+`, 2000)
+  if (r === 'TIMEOUT') return 'NOT_FOUND'
+  return r || 'NOT_FOUND'
+})
+
+// List all top-level windows (diagnostic helper)
+ipcMain.handle('list-windows', async () => {
+  if (!psProc || !psReady) return []
+
+  const r = await sendPS(`
+$walker = [System.Windows.Automation.TreeWalker]::RawViewWalker
+$child  = $walker.GetFirstChild($global:root)
+$names  = @()
+while ($child) {
+  try { $n = $child.Current.Name; if ($n) { $names += $n } } catch {}
+  $child = $walker.GetNextSibling($child)
+}
+Write-Output ($names -join "||")
+`, 3000)
+  if (!r || r === 'TIMEOUT') return []
+  return r.split('||').map(s => s.trim()).filter(Boolean)
+})
+
+// Summarize text (basic extractive summary — no external API required)
+ipcMain.handle('summarize', async (e, text) => {
+  if (!text || !text.trim()) return ''
+  const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text]
+  const maxSentences = 3
+  if (sentences.length <= maxSentences) return text.trim()
+  // Return first sentence + last (maxSentences-1) sentences as a simple summary
+  const summary = [
+    sentences[0],
+    ...sentences.slice(-(maxSentences - 1))
+  ].join(' ').trim()
+  return summary
+})
+
 // Export
 ipcMain.handle('export-transcript', async (e, text, title) => {
   const safe = (title || 'Untitled recording')
